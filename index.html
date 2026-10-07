@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Турнирная сетка</title>
+<style>
+    :root {
+        --bg: #0b1220;
+        --col: #16203a;
+        --match: #1e293b;
+        --team: #243046;
+        --team-hover: #334155;
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --accent: #3b82f6;
+        --winner: #10b981;
+        --winner-text: #ffffff;
+        --line: #2a3a5c;
+        --disabled: #1a2233;
+        --gold: #f5c542;
+        --gold-text: #1a1200;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        background: var(--bg);
+        color: var(--text);
+        padding: 20px;
+        min-height: 100vh;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+    }
+    header {
+        max-width: 1600px;
+        margin: 0 auto 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--col);
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    h1 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: var(--muted);
+    }
+    button.reset {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: background 0.2s;
+    }
+    button.reset:hover { background: #2563eb; }
+    .bracket-wrapper {
+        max-width: 1600px;
+        margin: 0 auto;
+        overflow-x: auto;
+        padding-bottom: 30px;
+    }
+    .section-title {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--muted);
+        margin: 25px 0 12px;
+        padding-left: 8px;
+        border-left: 3px solid var(--accent);
+        font-weight: 700;
+    }
+    .bracket {
+        display: grid;
+        gap: 20px;
+        min-width: 1300px;
+    }
+    .bracket.upper { grid-template-columns: repeat(5, minmax(200px, 1fr)); }
+    .bracket.lower { grid-template-columns: repeat(6, minmax(200px, 1fr)); }
+    .round {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        position: relative;
+        gap: 12px;
+    }
+    .round:first-child { gap: 32px; }
+    .round-title {
+        text-align: center;
+        font-size: 0.7rem;
+        color: var(--muted);
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        background: var(--col);
+        padding: 4px;
+        border-radius: 3px;
+        letter-spacing: 0.5px;
+    }
+    .match {
+        background: var(--col);
+        border-radius: 5px;
+        padding: 3px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        position: relative;
+        margin: auto 0;
+        box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+    }
+    .round:not(:last-child) .match::after {
+        content: '';
+        position: absolute;
+        right: -20px;
+        top: 50%;
+        width: 20px;
+        height: 2px;
+        background: var(--line);
+    }
+    .team {
+        background: var(--team);
+        padding: 7px 10px;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid transparent;
+        user-select: none;
+        letter-spacing: 0.3px;
+        min-height: 32px;
+    }
+    .team:hover:not(.empty):not(.disabled) {
+        background: var(--team-hover);
+        border-color: var(--accent);
+    }
+    .team.empty {
+        color: var(--muted);
+        font-style: italic;
+        cursor: default;
+        background: transparent;
+        border: 1px dashed var(--match);
+        font-weight: 400;
+    }
+    .team.disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+        background: var(--disabled);
+        border-color: var(--match);
+    }
+    .team.disabled:hover {
+        background: var(--disabled);
+        border-color: var(--match);
+    }
+    .team.winner {
+        background: var(--winner);
+        color: var(--winner-text);
+        border-color: #34d399;
+        font-weight: 700;
+        box-shadow: 0 0 10px rgba(16,185,129,0.35);
+        opacity: 1;
+    }
+    .team.winner::after {
+        content: '✓';
+        font-size: 0.75rem;
+        opacity: 0.9;
+    }
+    .team.champion {
+        background: linear-gradient(135deg, #f5c542, #d4a017);
+        color: var(--gold-text);
+        border-color: #fbbf24;
+        font-weight: 800;
+        box-shadow: 0 0 20px rgba(245, 197, 66, 0.65), 0 0 40px rgba(245, 197, 66, 0.35);
+        letter-spacing: 0.5px;
+        text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+    }
+    .team.champion::after {
+        content: '🏆';
+        font-size: 0.9rem;
+        opacity: 1;
+    }
+    @media (max-width: 768px) {
+        .bracket.upper, .bracket.lower {
+            grid-template-columns: 1fr;
+            min-width: 100%;
+        }
+        .round { gap: 10px; margin-bottom: 20px; }
+        .round:first-child { gap: 20px; }
+        .match::after { display: none !important; }
+        .match { border-left: 3px solid var(--accent); }
+        .round-title { text-align: left; padding-left: 8px; }
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <h1>Турнирная сетка</h1>
+    <button class="reset" id="reset-btn">Сбросить всё</button>
+</header>
+
+<div class="bracket-wrapper">
+    <div class="section-title">Верхняя сетка</div>
+    <div class="bracket upper" id="upper-bracket"></div>
+
+    <div class="section-title">Нижняя сетка</div>
+    <div class="bracket lower" id="lower-bracket"></div>
+</div>
+
+<script>
+/* ============================================================
+   СХЕМА
+
+   ВЕРХНЯЯ СЕТКА:
+     Раунд 1: 8 матчей (u1..u8)
+     Раунд 2: 4 матча  (u9..u12)
+     Раунд 3: 2 матча  (u13, u14)
+     Раунд 4: 1 матч   (u15)
+     Раунд 5: 1 матч   (u16) — ГРАНД-ФИНАЛ (победитель = ЧЕМПИОН)
+
+   НИЖНЯЯ СЕТКА:
+     Раунд 1: 4 матча (l1..l4)
+     Раунд 2: 4 матча (l5..l8)
+     Раунд 3: 2 матча (l9, l10)
+     Раунд 4: 2 матча (l11, l12)
+     Раунд 5: 1 матч  (l13)
+     Раунд 6: 1 матч  (l14) → победитель идёт в u16.t2
+   ============================================================ */
+
+const upperData = [
+    [
+        { id: 'u1', t1: 'SUBWJ', t2: 'BVVD',  winner: null },
+        { id: 'u2', t1: 'HAZE',  t2: 'DNA',   winner: null },
+        { id: 'u3', t1: 'CLOUD', t2: 'SIDE',  winner: null },
+        { id: 'u4', t1: 'MICA',  t2: 'MNTX',  winner: null },
+        { id: 'u5', t1: 'PORK',  t2: 'OP91',  winner: null },
+        { id: 'u6', t1: 'BALLS', t2: 'UNION', winner: null },
+        { id: 'u7', t1: 'ATFD',  t2: '4MEZ',  winner: null },
+        { id: 'u8', t1: 'YFAR',  t2: 'VAMP',  winner: null }
+    ],
+    [
+        { id: 'u9',  t1: null, t2: null, winner: null },
+        { id: 'u10', t1: null, t2: null, winner: null },
+        { id: 'u11', t1: null, t2: null, winner: null },
+        { id: 'u12', t1: null, t2: null, winner: null }
+    ],
+    [
+        { id: 'u13', t1: null, t2: null, winner: null },
+        { id: 'u14', t1: null, t2: null, winner: null }
+    ],
+    [
+        { id: 'u15', t1: null, t2: null, winner: null }
+    ],
+    [
+        { id: 'u16', t1: null, t2: null, winner: null }
+    ]
+];
+
+const lowerData = [
+    [
+        { id: 'l1', t1: null, t2: null, winner: null },
+        { id: 'l2', t1: null, t2: null, winner: null },
+        { id: 'l3', t1: null, t2: null, winner: null },
+        { id: 'l4', t1: null, t2: null, winner: null }
+    ],
+    [
+        { id: 'l5', t1: null, t2: null, winner: null },
+        { id: 'l6', t1: null, t2: null, winner: null },
+        { id: 'l7', t1: null, t2: null, winner: null },
+        { id: 'l8', t1: null, t2: null, winner: null }
+    ],
+    [
+        { id: 'l9',  t1: null, t2: null, winner: null },
+        { id: 'l10', t1: null, t2: null, winner: null }
+    ],
+    [
+        { id: 'l11', t1: null, t2: null, winner: null },
+        { id: 'l12', t1: null, t2: null, winner: null }
+    ],
+    [
+        { id: 'l13', t1: null, t2: null, winner: null }
+    ],
+    [
+        { id: 'l14', t1: null, t2: null, winner: null }
+    ]
+];
+
+const GRAND_FINAL_ID = 'u16';
+
+const UPPER_WINNER_LINKS = {
+    'u1': { nextId: 'u9',  slot: 't1' },
+    'u2': { nextId: 'u9',  slot: 't2' },
+    'u3': { nextId: 'u10', slot: 't1' },
+    'u4': { nextId: 'u10', slot: 't2' },
+    'u5': { nextId: 'u11', slot: 't1' },
+    'u6': { nextId: 'u11', slot: 't2' },
+    'u7': { nextId: 'u12', slot: 't1' },
+    'u8': { nextId: 'u12', slot: 't2' },
+    'u9':  { nextId: 'u13', slot: 't1' },
+    'u10': { nextId: 'u13', slot: 't2' },
+    'u11': { nextId: 'u14', slot: 't1' },
+    'u12': { nextId: 'u14', slot: 't2' },
+    'u13': { nextId: 'u15', slot: 't1' },
+    'u14': { nextId: 'u15', slot: 't2' },
+    'u15': { nextId: 'u16', slot: 't1' }
+};
+
+const LOWER_WINNER_LINKS = {
+    'l1': { nextId: 'l5', slot: 't1' },
+    'l2': { nextId: 'l6', slot: 't1' },
+    'l3': { nextId: 'l7', slot: 't1' },
+    'l4': { nextId: 'l8', slot: 't1' },
+    'l5': { nextId: 'l9',  slot: 't1' },
+    'l6': { nextId: 'l9',  slot: 't2' },
+    'l7': { nextId: 'l10', slot: 't1' },
+    'l8': { nextId: 'l10', slot: 't2' },
+    'l9':  { nextId: 'l11', slot: 't1' },
+    'l10': { nextId: 'l12', slot: 't1' },
+    'l11': { nextId: 'l13', slot: 't1' },
+    'l12': { nextId: 'l13', slot: 't2' },
+    'l13': { nextId: 'l14', slot: 't1' },
+    'l14': { nextId: 'u16', slot: 't2' }
+};
+
+const UPPER_LOSER_LINKS = {
+    'u1': { lowerId: 'l1', slot: 't1' },
+    'u2': { lowerId: 'l1', slot: 't2' },
+    'u3': { lowerId: 'l2', slot: 't1' },
+    'u4': { lowerId: 'l2', slot: 't2' },
+    'u5': { lowerId: 'l3', slot: 't1' },
+    'u6': { lowerId: 'l3', slot: 't2' },
+    'u7': { lowerId: 'l4', slot: 't1' },
+    'u8': { lowerId: 'l4', slot: 't2' },
+    'u9':  { lowerId: 'l5', slot: 't2' },
+    'u10': { lowerId: 'l6', slot: 't2' },
+    'u11': { lowerId: 'l7', slot: 't2' },
+    'u12': { lowerId: 'l8', slot: 't2' },
+    'u13': { lowerId: 'l11', slot: 't2' },
+    'u14': { lowerId: 'l12', slot: 't2' },
+    'u15': { lowerId: 'l14', slot: 't2' }
+};
+
+/* ============================================================
+   РЕНДЕР
+   ============================================================ */
+function renderBracket(containerId, data, labelPrefix) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+
+    for (let r = 0; r < data.length; r++) {
+        const roundEl = document.createElement('div');
+        roundEl.className = 'round';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'round-title';
+        titleEl.textContent = labelPrefix + ' ' + (r + 1);
+        roundEl.appendChild(titleEl);
+
+        for (let m = 0; m < data[r].length; m++) {
+            const match = data[r][m];
+            const matchEl = document.createElement('div');
+            matchEl.className = 'match';
+
+            const hasBoth = !!(match.t1 && match.t2);
+
+            matchEl.appendChild(createTeamEl(match, 1, data, hasBoth));
+            matchEl.appendChild(createTeamEl(match, 2, data, hasBoth));
+            roundEl.appendChild(matchEl);
+        }
+
+        container.appendChild(roundEl);
+    }
+}
+
+function createTeamEl(match, teamNum, data, hasBoth) {
+    const el = document.createElement('div');
+    el.className = 'team';
+
+    const name = teamNum === 1 ? match.t1 : match.t2;
+    const isWinner = match.winner === teamNum;
+
+    if (!name) {
+        el.classList.add('empty');
+        el.textContent = '—';
+        return el;
+    }
+
+    el.textContent = name;
+
+    if (!hasBoth) {
+        el.classList.add('disabled');
+        el.title = 'Нельзя выбрать победителя, пока нет пары';
+        return el;
+    }
+
+    if (isWinner) {
+        if (match.id === GRAND_FINAL_ID) {
+            el.classList.add('champion');
+        } else {
+            el.classList.add('winner');
+        }
+    }
+
+    el.addEventListener('click', (function (mId, tNum, d) {
+        return function () { handleTeamClick(mId, tNum, d); };
+    })(match.id, teamNum, data));
+
+    return el;
+}
+
+/* ============================================================
+   УТИЛИТЫ
+   ============================================================ */
+function findMatch(data, matchId) {
+    for (let r = 0; r < data.length; r++) {
+        for (let m = 0; m < data[r].length; m++) {
+            if (data[r][m].id === matchId) {
+                return { match: data[r][m], round: r, index: m };
+            }
+        }
+    }
+    return null;
+}
+
+function isUpperMatch(matchId) {
+    for (let r = 0; r < upperData.length; r++) {
+        for (let m = 0; m < upperData[r].length; m++) {
+            if (upperData[r][m].id === matchId) return true;
+        }
+    }
+    return false;
+}
+
+function getWinnerDestination(matchId) {
+    if (isUpperMatch(matchId)) {
+        const link = UPPER_WINNER_LINKS[matchId];
+        if (!link) return null;
+        return { data: upperData, isUpper: true, nextId: link.nextId, slot: link.slot };
+    } else {
+        const link = LOWER_WINNER_LINKS[matchId];
+        if (!link) return null;
+        const destIsUpper = link.nextId.charAt(0) === 'u';
+        return {
+            data: destIsUpper ? upperData : lowerData,
+            isUpper: destIsUpper,
+            nextId: link.nextId,
+            slot: link.slot
+        };
+    }
+}
+
+/* ============================================================
+   КЛИК
+   ============================================================ */
+function handleTeamClick(matchId, teamNum, data) {
+    const found = findMatch(data, matchId);
+    if (!found) return;
+
+    const match = found.match;
+    if (!match.t1 || !match.t2) return;
+
+    const teamName = teamNum === 1 ? match.t1 : match.t2;
+
+    if (match.winner === teamNum) {
+        match.winner = null;
+        removeWinnerFromNext(matchId, teamName);
+        if (isUpperMatch(matchId)) {
+            removeLoserFromLower(matchId);
+        }
+    } else {
+        if (match.winner !== null) {
+            const oldTeam = match.winner === 1 ? match.t1 : match.t2;
+            removeWinnerFromNext(matchId, oldTeam);
+            if (isUpperMatch(matchId)) {
+                removeLoserFromLower(matchId);
+            }
+        }
+        match.winner = teamNum;
+        addWinnerToNext(matchId, teamName);
+        if (isUpperMatch(matchId)) {
+            updateLoserInLower(matchId);
+        }
+    }
+
+    rerenderAll();
+}
+
+function addWinnerToNext(matchId, teamName) {
+    const dest = getWinnerDestination(matchId);
+    if (!dest) return;
+    const nm = findMatch(dest.data, dest.nextId);
+    if (nm) nm.match[dest.slot] = teamName;
+}
+
+function removeWinnerFromNext(matchId, teamName) {
+    const dest = getWinnerDestination(matchId);
+    if (!dest) return;
+    const nm = findMatch(dest.data, dest.nextId);
+    if (nm && nm.match[dest.slot] === teamName) {
+        nm.match[dest.slot] = null;
+        if (dest.isUpper) {
+            clearUpperBranch(nm.round, nm.index);
+        } else {
+            clearLowerBranch(nm.round, nm.index);
+        }
+    }
+}
+
+function clearUpperBranch(roundIndex, matchIndex) {
+    const match = upperData[roundIndex][matchIndex];
+    if (!match) return;
+
+    if (match.winner !== null) {
+        const wTeam = match.winner === 1 ? match.t1 : match.t2;
+        const dest = getWinnerDestination(match.id);
+        match.winner = null;
+        if (dest) {
+            const nm = findMatch(dest.data, dest.nextId);
+            if (nm && nm.match[dest.slot] === wTeam) {
+                nm.match[dest.slot] = null;
+                if (dest.isUpper) {
+                    clearUpperBranch(nm.round, nm.index);
+                } else {
+                    clearLowerBranch(nm.round, nm.index);
+                }
+            }
+        }
+    }
+
+    if (match.t1 === null && match.t2 === null && match.winner === null) {
+        const dest = getWinnerDestination(match.id);
+        if (dest) {
+            const nm = findMatch(dest.data, dest.nextId);
+            if (nm && nm.match[dest.slot] !== null) {
+                nm.match[dest.slot] = null;
+                if (dest.isUpper) {
+                    clearUpperBranch(nm.round, nm.index);
+                } else {
+                    clearLowerBranch(nm.round, nm.index);
+                }
+            }
+        }
+    }
+}
+
+function clearLowerBranch(roundIndex, matchIndex) {
+    const match = lowerData[roundIndex][matchIndex];
+    if (!match) return;
+
+    if (match.winner !== null) {
+        const wTeam = match.winner === 1 ? match.t1 : match.t2;
+        const dest = getWinnerDestination(match.id);
+        match.winner = null;
+        if (dest) {
+            const nm = findMatch(dest.data, dest.nextId);
+            if (nm && nm.match[dest.slot] === wTeam) {
+                nm.match[dest.slot] = null;
+                if (dest.isUpper) {
+                    clearUpperBranch(nm.round, nm.index);
+                } else {
+                    clearLowerBranch(nm.round, nm.index);
+                }
+            }
+        }
+    }
+
+    if (match.t1 === null && match.t2 === null && match.winner === null) {
+        const dest = getWinnerDestination(match.id);
+        if (dest) {
+            const nm = findMatch(dest.data, dest.nextId);
+            if (nm && nm.match[dest.slot] !== null) {
+                nm.match[dest.slot] = null;
+                if (dest.isUpper) {
+                    clearUpperBranch(nm.round, nm.index);
+                } else {
+                    clearLowerBranch(nm.round, nm.index);
+                }
+            }
+        }
+    }
+}
+
+function updateLoserInLower(upperMatchId) {
+    const link = UPPER_LOSER_LINKS[upperMatchId];
+    if (!link) return;
+
+    const upperFound = findMatch(upperData, upperMatchId);
+    if (!upperFound) return;
+    const upperMatch = upperFound.match;
+
+    const lowerFound = findMatch(lowerData, link.lowerId);
+    if (!lowerFound) return;
+    const lowerMatch = lowerFound.match;
+
+    let loserTeam = null;
+    if (upperMatch.winner === 1) loserTeam = upperMatch.t2;
+    else if (upperMatch.winner === 2) loserTeam = upperMatch.t1;
+
+    if (lowerMatch[link.slot] === loserTeam) return;
+
+    if (lowerMatch[link.slot] !== null) {
+        const oldTeam = lowerMatch[link.slot];
+        lowerMatch[link.slot] = null;
+        if (lowerMatch.winner !== null) {
+            const wTeam = lowerMatch.winner === 1 ? lowerMatch.t1 : lowerMatch.t2;
+            if (wTeam === oldTeam) {
+                lowerMatch.winner = null;
+                const dest = getWinnerDestination(lowerMatch.id);
+                if (dest) {
+                    const nm = findMatch(dest.data, dest.nextId);
+                    if (nm && nm.match[dest.slot] === wTeam) {
+                        nm.match[dest.slot] = null;
+                        if (dest.isUpper) {
+                            clearUpperBranch(nm.round, nm.index);
+                        } else {
+                            clearLowerBranch(nm.round, nm.index);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    lowerMatch[link.slot] = loserTeam;
+}
+
+function removeLoserFromLower(upperMatchId) {
+    const link = UPPER_LOSER_LINKS[upperMatchId];
+    if (!link) return;
+
+    const lowerFound = findMatch(lowerData, link.lowerId);
+    if (!lowerFound) return;
+    const lowerMatch = lowerFound.match;
+
+    if (lowerMatch[link.slot] !== null) {
+        const oldTeam = lowerMatch[link.slot];
+        lowerMatch[link.slot] = null;
+        if (lowerMatch.winner !== null) {
+            const wTeam = lowerMatch.winner === 1 ? lowerMatch.t1 : lowerMatch.t2;
+            if (wTeam === oldTeam) {
+                lowerMatch.winner = null;
+                const dest = getWinnerDestination(lowerMatch.id);
+                if (dest) {
+                    const nm = findMatch(dest.data, dest.nextId);
+                    if (nm && nm.match[dest.slot] === wTeam) {
+                        nm.match[dest.slot] = null;
+                        if (dest.isUpper) {
+                            clearUpperBranch(nm.round, nm.index);
+                        } else {
+                            clearLowerBranch(nm.round, nm.index);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* ============================================================
+   ПЕРЕРИСОВКА / СБРОС / СТАРТ
+   ============================================================ */
+function rerenderAll() {
+    renderBracket('upper-bracket', upperData, 'Раунд');
+    renderBracket('lower-bracket', lowerData, 'Раунд');
+}
+
+function resetAll() {
+    const upperInitial = [
+        ['SUBWJ','BVVD'], ['HAZE','DNA'], ['CLOUD','SIDE'], ['MICA','MNTX'],
+        ['PORK','OP91'], ['BALLS','UNION'], ['ATFD','4MEZ'], ['YFAR','VAMP']
+    ];
+
+    for (let r = 0; r < upperData.length; r++) {
+        for (let m = 0; m < upperData[r].length; m++) {
+            const match = upperData[r][m];
+            match.winner = null;
+            if (r === 0) {
+                match.t1 = upperInitial[m][0];
+                match.t2 = upperInitial[m][1];
+            } else {
+                match.t1 = null;
+                match.t2 = null;
+            }
+        }
+    }
+
+    for (let r = 0; r < lowerData.length; r++) {
+        for (let m = 0; m < lowerData[r].length; m++) {
+            const match = lowerData[r][m];
+            match.winner = null;
+            match.t1 = null;
+            match.t2 = null;
+        }
+    }
+
+    rerenderAll();
+}
+
+document.getElementById('reset-btn').addEventListener('click', resetAll);
+rerenderAll();
+</script>
+</body>
+</html>
