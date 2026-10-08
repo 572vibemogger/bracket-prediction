@@ -16,7 +16,7 @@
         --accent: #3b82f6;
         --winner: #10b981;
         --winner-text: #ffffff;
-        --line: #2a3a5c;
+        --line: #3a5580;
         --disabled: #1a2233;
         --gold: #f5c542;
         --gold-text: #1a1200;
@@ -75,52 +75,118 @@
         border-left: 3px solid var(--accent);
         font-weight: 700;
     }
+
+    /* ====================================================
+       СЕТКА
+       column-gap = 20px → половина = 10px (для соединителей).
+       row-gap = 0, чтобы проценты у вертикальных шин попадали
+       точно в центры родительских матчей.
+       ==================================================== */
     .bracket {
         display: grid;
-        gap: 20px;
+        column-gap: 20px;
+        row-gap: 0;
         min-width: 1300px;
     }
-    .bracket.upper { grid-template-columns: repeat(5, minmax(200px, 1fr)); }
-    .bracket.lower { grid-template-columns: repeat(6, minmax(200px, 1fr)); }
-    .round {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-around;
-        position: relative;
-        gap: 12px;
+    .bracket.upper {
+        grid-template-columns: repeat(5, minmax(200px, 1fr));
+        grid-template-rows: auto repeat(8, minmax(70px, auto));
     }
-    .round:first-child { gap: 32px; }
+    .bracket.lower {
+        grid-template-columns: repeat(6, minmax(200px, 1fr));
+        grid-template-rows: auto repeat(8, minmax(70px, auto));
+    }
+
     .round-title {
+        align-self: center;
         text-align: center;
         font-size: 0.7rem;
         color: var(--muted);
-        margin-bottom: 12px;
         text-transform: uppercase;
         background: var(--col);
-        padding: 4px;
+        padding: 5px;
         border-radius: 3px;
         letter-spacing: 0.5px;
+        margin-bottom: 8px;
     }
+
+    /* .match занимает весь grid-row span, чтобы соединители
+       позиционировались относительно всей ячейки. */
     .match {
+        position: relative;
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+    }
+    .match-inner {
+        width: 100%;
         background: var(--col);
         border-radius: 5px;
         padding: 3px;
         display: flex;
         flex-direction: column;
         gap: 3px;
-        position: relative;
-        margin: auto 0;
         box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+        margin: 10px 0;
     }
-    .round:not(:last-child) .match::after {
+
+    /* ====================================================
+       СОЕДИНИТЕЛИ
+       Все — var(--line), 2px.
+       ==================================================== */
+
+    /* Исходящая линия вправо (все матчи, кроме последней колонки) */
+    .match.has-outgoing::after {
         content: '';
         position: absolute;
-        right: -20px;
+        right: -10px;
         top: 50%;
-        width: 20px;
+        width: 10px;
         height: 2px;
         background: var(--line);
+        transform: translateY(-50%);
     }
+
+    /* Вертикальная шина — соединяет два родительских матча.
+       top:25% / bottom:25% при span ребёнка = 2×span родителя
+       точно попадает в их центры. */
+    .match.has-incoming-bus::before {
+        content: '';
+        position: absolute;
+        left: -10px;
+        top: 25%;
+        bottom: 25%;
+        width: 2px;
+        background: var(--line);
+    }
+
+    /* Горизонтальный сегмент от шины к левому краю матча */
+    .match.has-incoming-bus .match-inner::before {
+        content: '';
+        position: absolute;
+        left: -10px;
+        top: 50%;
+        width: 10px;
+        height: 2px;
+        background: var(--line);
+        transform: translateY(-50%);
+    }
+
+    /* Прямая входящая линия (у матча 1 предок) */
+    .match.has-incoming-horiz::before {
+        content: '';
+        position: absolute;
+        left: -10px;
+        top: 50%;
+        width: 10px;
+        height: 2px;
+        background: var(--line);
+        transform: translateY(-50%);
+    }
+
+    /* ====================================================
+       КОМАНДА
+       ==================================================== */
     .team {
         background: var(--team);
         padding: 7px 10px;
@@ -186,16 +252,32 @@
         font-size: 0.9rem;
         opacity: 1;
     }
+
+    /* ====================================================
+       МОБИЛЬНАЯ ВЕРСИЯ
+       ==================================================== */
     @media (max-width: 768px) {
         .bracket.upper, .bracket.lower {
             grid-template-columns: 1fr;
+            grid-template-rows: auto;
             min-width: 100%;
         }
-        .round { gap: 10px; margin-bottom: 20px; }
-        .round:first-child { gap: 20px; }
-        .match::after { display: none !important; }
-        .match { border-left: 3px solid var(--accent); }
-        .round-title { text-align: left; padding-left: 8px; }
+        .bracket .match,
+        .bracket .round-title {
+            grid-column: auto !important;
+            grid-row: auto !important;
+        }
+        .match { align-self: auto; }
+        .match-inner {
+            margin: 4px 0;
+            border-left: 3px solid var(--accent);
+        }
+        .match.has-outgoing::after,
+        .match.has-incoming-bus::before,
+        .match.has-incoming-bus .match-inner::before,
+        .match.has-incoming-horiz::before {
+            display: none;
+        }
     }
 </style>
 </head>
@@ -215,25 +297,6 @@
 </div>
 
 <script>
-/* ============================================================
-   СХЕМА
-
-   ВЕРХНЯЯ СЕТКА:
-     Раунд 1: 8 матчей (u1..u8)
-     Раунд 2: 4 матча  (u9..u12)
-     Раунд 3: 2 матча  (u13, u14)
-     Раунд 4: 1 матч   (u15)
-     Раунд 5: 1 матч   (u16) — ГРАНД-ФИНАЛ (победитель = ЧЕМПИОН)
-
-   НИЖНЯЯ СЕТКА:
-     Раунд 1: 4 матча (l1..l4)
-     Раунд 2: 4 матча (l5..l8)
-     Раунд 3: 2 матча (l9, l10)
-     Раунд 4: 2 матча (l11, l12)
-     Раунд 5: 1 матч  (l13)
-     Раунд 6: 1 матч  (l14) → победитель идёт в u16.t2
-   ============================================================ */
-
 const upperData = [
     [
         { id: 'u1', t1: 'SUBWJ', t2: 'BVVD',  winner: null },
@@ -292,6 +355,9 @@ const lowerData = [
     ]
 ];
 
+const UPPER_SPANS = [1, 2, 4, 8, 8];
+const LOWER_SPANS = [2, 2, 4, 4, 8, 8];
+
 const GRAND_FINAL_ID = 'u16';
 
 const UPPER_WINNER_LINKS = {
@@ -347,35 +413,53 @@ const UPPER_LOSER_LINKS = {
     'u15': { lowerId: 'l14', slot: 't2' }
 };
 
-/* ============================================================
-   РЕНДЕР
-   ============================================================ */
-function renderBracket(containerId, data, labelPrefix) {
+function renderBracket(containerId, data, labelPrefix, spans) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
 
-    for (let r = 0; r < data.length; r++) {
-        const roundEl = document.createElement('div');
-        roundEl.className = 'round';
+    const numRounds = data.length;
 
+    for (let r = 0; r < numRounds; r++) {
         const titleEl = document.createElement('div');
         titleEl.className = 'round-title';
         titleEl.textContent = labelPrefix + ' ' + (r + 1);
-        roundEl.appendChild(titleEl);
+        titleEl.style.gridColumn = r + 1;
+        titleEl.style.gridRow = 1;
+        container.appendChild(titleEl);
+    }
 
-        for (let m = 0; m < data[r].length; m++) {
-            const match = data[r][m];
+    for (let r = 0; r < numRounds; r++) {
+        const matches = data[r];
+        const span = spans[r];
+
+        for (let m = 0; m < matches.length; m++) {
+            const match = matches[m];
             const matchEl = document.createElement('div');
             matchEl.className = 'match';
 
+            if (r < numRounds - 1) matchEl.classList.add('has-outgoing');
+            if (r > 0) {
+                if (span > spans[r - 1]) {
+                    matchEl.classList.add('has-incoming-bus');
+                } else {
+                    matchEl.classList.add('has-incoming-horiz');
+                }
+            }
+
+            matchEl.style.gridColumn = r + 1;
+            const rowStart = 2 + m * span;
+            matchEl.style.gridRow = rowStart + ' / span ' + span;
+
             const hasBoth = !!(match.t1 && match.t2);
 
-            matchEl.appendChild(createTeamEl(match, 1, data, hasBoth));
-            matchEl.appendChild(createTeamEl(match, 2, data, hasBoth));
-            roundEl.appendChild(matchEl);
-        }
+            const innerEl = document.createElement('div');
+            innerEl.className = 'match-inner';
+            innerEl.appendChild(createTeamEl(match, 1, data, hasBoth));
+            innerEl.appendChild(createTeamEl(match, 2, data, hasBoth));
+            matchEl.appendChild(innerEl);
 
-        container.appendChild(roundEl);
+            container.appendChild(matchEl);
+        }
     }
 }
 
@@ -401,11 +485,8 @@ function createTeamEl(match, teamNum, data, hasBoth) {
     }
 
     if (isWinner) {
-        if (match.id === GRAND_FINAL_ID) {
-            el.classList.add('champion');
-        } else {
-            el.classList.add('winner');
-        }
+        if (match.id === GRAND_FINAL_ID) el.classList.add('champion');
+        else el.classList.add('winner');
     }
 
     el.addEventListener('click', (function (mId, tNum, d) {
@@ -415,9 +496,6 @@ function createTeamEl(match, teamNum, data, hasBoth) {
     return el;
 }
 
-/* ============================================================
-   УТИЛИТЫ
-   ============================================================ */
 function findMatch(data, matchId) {
     for (let r = 0; r < data.length; r++) {
         for (let m = 0; m < data[r].length; m++) {
@@ -456,9 +534,6 @@ function getWinnerDestination(matchId) {
     }
 }
 
-/* ============================================================
-   КЛИК
-   ============================================================ */
 function handleTeamClick(matchId, teamNum, data) {
     const found = findMatch(data, matchId);
     if (!found) return;
@@ -471,22 +546,16 @@ function handleTeamClick(matchId, teamNum, data) {
     if (match.winner === teamNum) {
         match.winner = null;
         removeWinnerFromNext(matchId, teamName);
-        if (isUpperMatch(matchId)) {
-            removeLoserFromLower(matchId);
-        }
+        if (isUpperMatch(matchId)) removeLoserFromLower(matchId);
     } else {
         if (match.winner !== null) {
             const oldTeam = match.winner === 1 ? match.t1 : match.t2;
             removeWinnerFromNext(matchId, oldTeam);
-            if (isUpperMatch(matchId)) {
-                removeLoserFromLower(matchId);
-            }
+            if (isUpperMatch(matchId)) removeLoserFromLower(matchId);
         }
         match.winner = teamNum;
         addWinnerToNext(matchId, teamName);
-        if (isUpperMatch(matchId)) {
-            updateLoserInLower(matchId);
-        }
+        if (isUpperMatch(matchId)) updateLoserInLower(matchId);
     }
 
     rerenderAll();
@@ -505,11 +574,8 @@ function removeWinnerFromNext(matchId, teamName) {
     const nm = findMatch(dest.data, dest.nextId);
     if (nm && nm.match[dest.slot] === teamName) {
         nm.match[dest.slot] = null;
-        if (dest.isUpper) {
-            clearUpperBranch(nm.round, nm.index);
-        } else {
-            clearLowerBranch(nm.round, nm.index);
-        }
+        if (dest.isUpper) clearUpperBranch(nm.round, nm.index);
+        else clearLowerBranch(nm.round, nm.index);
     }
 }
 
@@ -525,11 +591,8 @@ function clearUpperBranch(roundIndex, matchIndex) {
             const nm = findMatch(dest.data, dest.nextId);
             if (nm && nm.match[dest.slot] === wTeam) {
                 nm.match[dest.slot] = null;
-                if (dest.isUpper) {
-                    clearUpperBranch(nm.round, nm.index);
-                } else {
-                    clearLowerBranch(nm.round, nm.index);
-                }
+                if (dest.isUpper) clearUpperBranch(nm.round, nm.index);
+                else clearLowerBranch(nm.round, nm.index);
             }
         }
     }
@@ -540,11 +603,8 @@ function clearUpperBranch(roundIndex, matchIndex) {
             const nm = findMatch(dest.data, dest.nextId);
             if (nm && nm.match[dest.slot] !== null) {
                 nm.match[dest.slot] = null;
-                if (dest.isUpper) {
-                    clearUpperBranch(nm.round, nm.index);
-                } else {
-                    clearLowerBranch(nm.round, nm.index);
-                }
+                if (dest.isUpper) clearUpperBranch(nm.round, nm.index);
+                else clearLowerBranch(nm.round, nm.index);
             }
         }
     }
@@ -562,11 +622,8 @@ function clearLowerBranch(roundIndex, matchIndex) {
             const nm = findMatch(dest.data, dest.nextId);
             if (nm && nm.match[dest.slot] === wTeam) {
                 nm.match[dest.slot] = null;
-                if (dest.isUpper) {
-                    clearUpperBranch(nm.round, nm.index);
-                } else {
-                    clearLowerBranch(nm.round, nm.index);
-                }
+                if (dest.isUpper) clearUpperBranch(nm.round, nm.index);
+                else clearLowerBranch(nm.round, nm.index);
             }
         }
     }
@@ -577,11 +634,8 @@ function clearLowerBranch(roundIndex, matchIndex) {
             const nm = findMatch(dest.data, dest.nextId);
             if (nm && nm.match[dest.slot] !== null) {
                 nm.match[dest.slot] = null;
-                if (dest.isUpper) {
-                    clearUpperBranch(nm.round, nm.index);
-                } else {
-                    clearLowerBranch(nm.round, nm.index);
-                }
+                if (dest.isUpper) clearUpperBranch(nm.round, nm.index);
+                else clearLowerBranch(nm.round, nm.index);
             }
         }
     }
@@ -617,11 +671,8 @@ function updateLoserInLower(upperMatchId) {
                     const nm = findMatch(dest.data, dest.nextId);
                     if (nm && nm.match[dest.slot] === wTeam) {
                         nm.match[dest.slot] = null;
-                        if (dest.isUpper) {
-                            clearUpperBranch(nm.round, nm.index);
-                        } else {
-                            clearLowerBranch(nm.round, nm.index);
-                        }
+                        if (dest.isUpper) clearUpperBranch(nm.round, nm.index);
+                        else clearLowerBranch(nm.round, nm.index);
                     }
                 }
             }
@@ -651,11 +702,8 @@ function removeLoserFromLower(upperMatchId) {
                     const nm = findMatch(dest.data, dest.nextId);
                     if (nm && nm.match[dest.slot] === wTeam) {
                         nm.match[dest.slot] = null;
-                        if (dest.isUpper) {
-                            clearUpperBranch(nm.round, nm.index);
-                        } else {
-                            clearLowerBranch(nm.round, nm.index);
-                        }
+                        if (dest.isUpper) clearUpperBranch(nm.round, nm.index);
+                        else clearLowerBranch(nm.round, nm.index);
                     }
                 }
             }
@@ -663,12 +711,9 @@ function removeLoserFromLower(upperMatchId) {
     }
 }
 
-/* ============================================================
-   ПЕРЕРИСОВКА / СБРОС / СТАРТ
-   ============================================================ */
 function rerenderAll() {
-    renderBracket('upper-bracket', upperData, 'Раунд');
-    renderBracket('lower-bracket', lowerData, 'Раунд');
+    renderBracket('upper-bracket', upperData, 'Раунд', UPPER_SPANS);
+    renderBracket('lower-bracket', lowerData, 'Раунд', LOWER_SPANS);
 }
 
 function resetAll() {
